@@ -3,13 +3,14 @@ title: "CISC351, Research Question 1"
 output: pdf_document
 date: "2023-03-09"
 ---
+
 In this research question, we look at the effect a Superhost Status has on a host. First, we will use the minimum stay, price, and number of reviews to estimate the income of a host, and their occupancy.
 
 ```{r setup, include=FALSE}
 library(readr)
 library(dplyr)
 det_data = read_csv("det_listings.csv")  # detailed listings information aka listings.csv.gz
-sum_data = read_csv("sum_listings.csv")  # summary of listing information aka listings.csv.gz
+sum_data = read_csv("sum_listings.csv")  # summary of listing information aka listings.csv
 ```
 
 ```{r}
@@ -23,10 +24,35 @@ RQ1_df = merge(info, superhost, by = "id")
 RQ1_df$occupancy = RQ1_df$minimum_nights * RQ1_df$number_of_reviews
 
 RQ1_df$income = RQ1_df$minimum_nights * RQ1_df$number_of_reviews * RQ1_df$price
+
+# removing listings where the occupancy and income = 0
+RQ1_df1 = RQ1_df[!(RQ1_df$occupancy == 0 & RQ1_df$income == 0),]
+```
+
+To determine if there is a difference in the income or occupancy of a superhost compared to a regular host, a two-sample t-test will be used to determine the mean difference in the income and occupancy. First, two new subsets will be created to distinguish the superhosts from the regular hosts.
+
+```{r}
+superhosts = RQ1_df1[!(RQ1_df1$host_is_superhost == "FALSE"),]
+hosts = RQ1_df1[!(RQ1_df1$host_is_superhost == "TRUE"),]
+```
+
+Second, a Welch Two Sample t-test will be used to compare the means of income and occupancy
+
+```{r}
+occupancy_ttest = t.test(superhosts$occupancy, hosts$occupancy, alternative = "two.sided", var.equal = FALSE)
+income_ttest = t.test(superhosts$income, hosts$income, alternative = "two.sided", var.equal = FALSE)
 ```
 
 ```{r}
-
+occupancy_ttest
 ```
 
+From comparing the mean occupancy of a superhost to a host, we can observe that there is a statistically significant difference among the guests both hosts will have. On average, superhosts will house 940 guests, while regular hosts will house 681 guests.
 
+```{r}
+income_ttest
+```
+
+From comparing the mean income of a superhost to a host, we can observe that there is not a statistically significant difference among the two incomes, though there is a slight difference with superhosts receiving an income of roughly \$20,000 more.
+
+Thus, we can conclude that while there is not a statistically significant difference in the income of a regular host to a superhost, superhosts benefit from the superhost status as they are more likely to have more guests.
