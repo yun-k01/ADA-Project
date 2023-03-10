@@ -1,0 +1,32 @@
+---
+title: "CISC351, Research Question 1"
+output: pdf_document
+date: "2023-03-09"
+---
+In this research question, we look at the effect a Superhost Status has on a host. First, we will use the minimum stay, price, and number of reviews to estimate the income of a host, and their occupancy.
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+det_data = read_csv("det_listings.csv")  # detailed listings information aka listings.csv.gz
+sum_data = read_csv("sum_listings.csv")  # summary of listing information aka listings.csv.gz
+```
+
+```{r}
+# creating a dataset to estimate the occupancy and income
+superhost = det_data[, c("id", "host_id", "host_is_superhost")]
+
+info = sum_listings[, c("id", "host_id", "price", "minimum_nights", "number_of_reviews", "availability_365", "calculated_host_listings_count")]
+
+RQ1_df = merge(info, superhost, by = "id")
+
+RQ1_df$occupancy = RQ1_df$minimum_nights * RQ1_df$number_of_reviews
+
+RQ1_df$income = RQ1_df$minimum_nights * RQ1_df$number_of_reviews * RQ1_df$price
+```
+
+```{r}
+
+```
+
+
