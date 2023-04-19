@@ -1,8 +1,9 @@
 ---
 title: "CISC351, Research Question 1"
 output: pdf_document
-date: "2023-03-09"
+date: "2023-04-18"
 ---
+### Data Preprocessing
 
 In this research question, we look at the effect a Superhost Status has on a host. First, we will use the minimum stay, price, and number of reviews to estimate the income of a host, and their occupancy.
 
@@ -17,7 +18,7 @@ sum_data = read_csv("sum_listings.csv")  # summary of listing information aka li
 # creating a dataset to estimate the occupancy and income
 superhost = det_data[, c("id", "host_id", "host_is_superhost")]
 
-info = sum_listings[, c("id", "host_id", "price", "minimum_nights", "number_of_reviews", "availability_365", "calculated_host_listings_count")]
+info = sum_data[, c("id", "host_id", "price", "minimum_nights", "number_of_reviews", "availability_365", "calculated_host_listings_count")]
 
 RQ1_df = merge(info, superhost, by = "id")
 
@@ -29,30 +30,87 @@ RQ1_df$income = RQ1_df$minimum_nights * RQ1_df$number_of_reviews * RQ1_df$price
 RQ1_df1 = RQ1_df[!(RQ1_df$occupancy == 0 & RQ1_df$income == 0),]
 ```
 
-To determine if there is a difference in the income or occupancy of a superhost compared to a regular host, a two-sample t-test will be used to determine the mean difference in the income and occupancy. First, two new subsets will be created to distinguish the superhosts from the regular hosts.
-
 ```{r}
 superhosts = RQ1_df1[!(RQ1_df1$host_is_superhost == "FALSE"),]
 hosts = RQ1_df1[!(RQ1_df1$host_is_superhost == "TRUE"),]
 ```
 
+### Statistical Testing
 Second, a Welch Two Sample t-test will be used to compare the means of income and occupancy
 
 ```{r}
-occupancy_ttest = t.test(superhosts$occupancy, hosts$occupancy, alternative = "two.sided", var.equal = FALSE)
-income_ttest = t.test(superhosts$income, hosts$income, alternative = "two.sided", var.equal = FALSE)
+ttest_income = t.test(superhosts$income, hosts$income, alternative = "two.sided", var.equal = FALSE)
+ttest_occupancy = t.test(superhosts$occupancy, hosts$occupancy, alternative = "two.sided", var.equal = FALSE)
+
 ```
 
 ```{r}
-occupancy_ttest
+# visualizing the occupancy
+RQ1_df1$log_occupancy = log(RQ1_df1$occupancy)
+boxplot(log_occupancy ~ host_is_superhost, data = RQ1_df1, 
+        xlab = "Host is a Superhost", ylab = "Occupancy", 
+        main = "Comparison of Log Transformed Occupancies between Regular Hosts and Superhosts")
 ```
-
-From comparing the mean occupancy of a superhost to a host, we can observe that there is a statistically significant difference among the guests both hosts will have. On average, superhosts will house 940 guests, while regular hosts will house 681 guests.
 
 ```{r}
-income_ttest
+RQ1_df1$log_income = log(RQ1_df1$income)
+boxplot(log_income ~ host_is_superhost, data = RQ1_df1, 
+        xlab = "Host is a Superhost", ylab = "Income", 
+        main = "Comparison of Log Transformed Incomes between Regular Hosts and Superhosts")
 ```
 
-From comparing the mean income of a superhost to a host, we can observe that there is not a statistically significant difference among the two incomes, though there is a slight difference with superhosts receiving an income of roughly \$20,000 more.
+### Prediction Modeling
+Utilizing the occupancy rate as the outcome variable, the following prediction models were created to determine the degree to which the superhost status affects the occupancy rate.
+#### Looking at the the Occupancy
+```{r}
+superhost1 = det_data[, c(1, 13, 16, 17, 18, 19, 23, 24, 25, 26, 27, 31, 32, 33, 34, 35, 36, 37, 38, 39, 43, 51, 52, 53, 54, 63, 64, 65, 66, 67, 68, 70, 75)]
+info1 = sum_data[, c("id", "price", "minimum_nights", "availability_365", "number_of_reviews", "calculated_host_listings_count")]
+RQ1_df2 = merge(info1, superhost1, by = "id")
 
-Thus, we can conclude that while there is not a statistically significant difference in the income of a regular host to a superhost, superhosts benefit from the superhost status as they are more likely to have more guests.
+RQ1_df2 = RQ1_df2[,colSums(is.na(RQ1_df2))<nrow(RQ1_df2)]  # removing columns that are empty
+
+RQ1_df2$occupancy = RQ1_df2$minimum_nights * RQ1_df2$number_of_reviews
+
+RQ1_df2 = RQ1_df2[!(RQ1_df2$occupancy == 0),]
+
+RQ1_df2 = RQ1_df2[,-c(1, 3, 5)]  # removing columns utilized to predict occupancy to remove multicollinearity and the id
+
+```
+
+```{r}
+myfit1 = lm(occupancy ~ ., data = RQ1_df2)
+summary(myfit1)
+
+# finding the significant features 
+all_feat = summary(myfit1)$coefficients[-1,4] < 0.05
+important_feat = names(all_feat)[all_feat == TRUE]
+for (feat in important_feat) {
+  print(summary(myfit1)$coefficients[-1,4][feat])
+}
+```
+
+#### Looking at the Income
+```{r}
+superhost1 = det_data[, c(1, 13, 16, 17, 18, 19, 23, 24, 25, 26, 27, 31, 32, 33, 34, 35, 36, 37, 38, 39, 43, 51, 52, 53, 54, 63, 64, 65, 66, 67, 68, 70, 75)]
+info1 = sum_data[, c("id", "price", "minimum_nights", "availability_365", "number_of_reviews", "calculated_host_listings_count")]
+RQ1_df3 = merge(info1, superhost1, by = "id")
+
+RQ1_df3 = RQ1_df3[,colSums(is.na(RQ1_df3))<nrow(RQ1_df3)]  # removing columns that are empty
+
+RQ1_df3$income = RQ1_df3$minimum_nights * RQ1_df3$number_of_reviews * RQ1_df3$price
+
+RQ1_df3 = RQ1_df3[!(RQ1_df3$income == 0),]
+
+RQ1_df3 = RQ1_df3[,-1]
+```
+
+```{r}
+myfit2 = lm(income ~ ., data = RQ1_df3)
+summary(myfit2)
+all_feat1 = summary(myfit2)$coefficients[-1,4] < 0.05
+important_feat1 = names(all_feat1)[all_feat1 == TRUE]
+for (feat in important_feat1) {
+  print(summary(myfit2)$coefficients[-1,4][feat])
+}
+```
+
